@@ -1,0 +1,43 @@
+version: "3"
+networks:
+  velostat:
+    external: true
+
+services:
+  velostat-db:
+    image: postgres:9.6
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=db-user
+      - POSTGRES_PASSWORD=db-password
+    healthcheck:
+      test: PGPASSWORD='db-password' psql -U db-user --command='SELECT 1'
+      interval: 1s
+      timeout: 2s
+      retries: 5
+    networks:
+      - velostat
+
+  velostat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DB_URL=postgres://db-user:db-password@velostat-db:5432/velostat?sslmode=disable
+    depends_on:
+      - velostat-db
+    networks:
+      - velostat
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: db-user@localhost
+      PGADMIN_DEFAULT_PASSWORD: db-password
+    ports:
+      - 80:80
+    networks:
+      - velostat
