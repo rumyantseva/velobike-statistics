@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,6 +19,8 @@ import (
 // Count station statistics, store it in the database
 func main() {
 	log := logrus.New()
+	log.SetOutput(os.Stdout)
+	log.Info("Starting the app...")
 
 	// Create connection
 	conn, err := sql.Open(
@@ -30,6 +31,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Info("Ping the DB...")
 	for i := 0; i < 10; i++ {
 		err = conn.Ping()
 		if err == nil {
@@ -48,6 +50,7 @@ func main() {
 		reform.NewPrintfLogger(log.Printf),
 	)
 
+	log.Info("Query the DB...")
 	for i := 0; i < 10; i++ {
 		_, err = db.Query("SELECT 1")
 		if err == nil {
@@ -64,13 +67,23 @@ func main() {
 
 	c := time.Tick(5 * time.Minute)
 	ret := time.Tick(1 * time.Hour)
+	start := make(chan struct{}, 1)
 	stop := make(chan struct{}, 1)
+
+	log.Info("Starting the ticker...")
+	start <- struct{}{}
+
 	go func() {
 		for {
 			select {
 			case <-c:
+			case <-start:
 				log.Info("Save statistics...")
-				saveStats(client, db)
+				err := saveStats(client, db)
+				if err != nil {
+					log.Errorf("Got an error: %v", err)
+					stop <- struct{}{}
+				}
 
 			case <-ret:
 				stop <- struct{}{}
@@ -91,10 +104,10 @@ func main() {
 	}
 }
 
-func saveStats(client *velobike.Client, db *reform.DB) {
+func saveStats(client *velobike.Client, db *reform.DB) error {
 	parkings, _, err := client.Parkings.List()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for _, item := range parkings.Items {
@@ -107,9 +120,9 @@ func saveStats(client *velobike.Client, db *reform.DB) {
 			FreePlaces:  int32(*item.FreePlaces),
 			IsLocked:    *item.IsLocked,
 		}
-		db.Save(station)
-		if err := db.Save(station); err != nil {
-			log.Fatal(err)
-		}
+
+		return db.Save(station)
 	}
+
+	return nil
 }
