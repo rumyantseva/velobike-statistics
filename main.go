@@ -99,7 +99,7 @@ func main() {
 	case x := <-interrupt:
 		log.Infof("Received a signal: %s, the app will be stopped.", x.String())
 
-	case <-ret:
+	case <-stop:
 		log.Info("The app is ready to be stopped")
 	}
 }
