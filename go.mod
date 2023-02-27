@@ -6,5 +6,5 @@ require (
 	github.com/lib/pq v1.8.0
 	github.com/rumyantseva/go-velobike/v4 v4.0.0
 	github.com/sirupsen/logrus v1.6.0
-	gopkg.in/reform.v1 v1.4.1
+	gopkg.in/reform.v1 v1.5.1
 )
